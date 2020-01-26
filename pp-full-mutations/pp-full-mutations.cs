@@ -6,6 +6,7 @@ using PhoenixPoint.Common.Entities.Addons;
 using PhoenixPoint.Common.Entities.GameTags;
 using PhoenixPoint.Geoscape.Entities;
 using PhoenixPoint.Geoscape.View.ViewModules;
+using PhoenixPointModLoader;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -14,13 +15,15 @@ using UnityEngine.UI;
 
 namespace pantolomin.phoenixPoint.fullMutation
 {
-    public class Mod
+    public class Mod: IPhoenixPointMod
     {
-        public static void Init()
+        public ModLoadPriority Priority => ModLoadPriority.Low;
+
+        public void Initialize()
         {
             HarmonyInstance harmonyInstance = HarmonyInstance.Create(typeof(Mod).Namespace);
             // Dirty: We re-execute the method
-            Mod.Patch(harmonyInstance, typeof(UIModuleMutate), "InitCharacterInfo", "Prevent_InitCharacterInfo", "Override_InitCharacterInfo");
+            Patch(harmonyInstance, typeof(UIModuleMutate), "InitCharacterInfo", "Override_InitCharacterInfo");
         }
 
         // ******************************************************************************************************************
@@ -31,13 +34,7 @@ namespace pantolomin.phoenixPoint.fullMutation
 
         private const int MAX_MUTATIONS = 3;
 
-        public static bool Prevent_InitCharacterInfo()
-        {
-            // Skip the method completely -> Postfix replaces the body
-            return false;
-        }
-
-        public static void Override_InitCharacterInfo(UIModuleMutate __instance,
+        public static bool Override_InitCharacterInfo(UIModuleMutate __instance,
             GeoCharacter ____currentCharacter,
             ref int ____currentCharacterMutations,
             Dictionary<AddonSlotDef, UIModuleMutationSection> ____mutationSections)
@@ -78,6 +75,9 @@ namespace pantolomin.phoenixPoint.fullMutation
             str = str.Replace("{1}", MAX_MUTATIONS.ToString());
             __instance.MutationsAvailableValue.text = str;
             __instance.MutationsAvailableValue.GetComponent<UIColorController>().SetWarningActive(MAX_MUTATIONS <= ____currentCharacterMutations, false);
+
+            // Skip the method
+            return false;
         }
 
         // ******************************************************************************************************************
@@ -86,13 +86,13 @@ namespace pantolomin.phoenixPoint.fullMutation
         // ******************************************************************************************************************
         // ******************************************************************************************************************
 
-        private static void Patch(HarmonyInstance harmony, Type target, string toPatch, string prefix, string postfix = null, string transpiler = null)
+        private void Patch(HarmonyInstance harmony, Type target, string toPatch, string prefix, string postfix = null)
         {
             harmony.Patch(target.GetMethod(toPatch, BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic),
-                Mod.ToHarmonyMethod(prefix), Mod.ToHarmonyMethod(postfix), Mod.ToHarmonyMethod(transpiler));
+                ToHarmonyMethod(prefix), ToHarmonyMethod(postfix), null);
         }
 
-        private static HarmonyMethod ToHarmonyMethod(string name)
+        private HarmonyMethod ToHarmonyMethod(string name)
         {
             if (name == null)
             {
@@ -104,16 +104,6 @@ namespace pantolomin.phoenixPoint.fullMutation
                 throw new NullReferenceException(string.Concat("No method for name: ", name));
             }
             return new HarmonyMethod(method);
-        }
-
-        private static object getFieldValue(Type clazz, string fieldName, object instance)
-        {
-            FieldInfo field = clazz.GetField(fieldName);
-            if (field == null)
-            {
-                throw new NullReferenceException(string.Concat("No field for name: ", fieldName));
-            }
-            return field.GetValue(instance);
         }
     }
 }
