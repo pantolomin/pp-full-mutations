@@ -22,7 +22,8 @@ namespace pantolomin.phoenixPoint.fullMutation
         public void Initialize()
         {
             HarmonyInstance harmonyInstance = HarmonyInstance.Create(typeof(Mod).Namespace);
-            Patch(harmonyInstance, typeof(UIModuleMutate), "InitCharacterInfo", "Override_InitCharacterInfo");
+            Patch(harmonyInstance, typeof(UIModuleMutate), "InitCharacterInfo", "Override_InitCharacterInfo_Mutate");
+            Patch(harmonyInstance, typeof(UIModuleBionics), "InitCharacterInfo", "Override_InitCharacterInfo_Augment");
         }
 
         // ******************************************************************************************************************
@@ -33,7 +34,7 @@ namespace pantolomin.phoenixPoint.fullMutation
 
         private const int MAX_AUGMENTATIONS = 3;
 
-        public static bool Override_InitCharacterInfo(UIModuleMutate __instance,
+        public static bool Override_InitCharacterInfo_Mutate(UIModuleMutate __instance,
             ref int ____currentCharacterAugmentsAmount,
 			Dictionary<AddonSlotDef, UIModuleMutationSection> ____augmentSections,
 			GameTagDef ____bionicsTag,
@@ -97,8 +98,76 @@ namespace pantolomin.phoenixPoint.fullMutation
 			}
 			__instance.MutationsAvailableValue.text = __instance.XoutOfY.Localize(null)
 				.Replace("{0}", ____currentCharacterAugmentsAmount.ToString())
-				.Replace("{1}", MAX_AUGMENTATIONS.ToString()); ;
+				.Replace("{1}", MAX_AUGMENTATIONS.ToString());
 			__instance.MutationsAvailableValue.GetComponent<UIColorController>().SetWarningActive(MAX_AUGMENTATIONS <= ____currentCharacterAugmentsAmount, false);
+			return false;
+		}
+
+		public static bool Override_InitCharacterInfo_Augment(UIModuleBionics __instance,
+            ref int ____currentCharacterAugmentsAmount,
+			Dictionary<AddonSlotDef, UIModuleMutationSection> ____augmentSections,
+			GameTagDef ____bionicsTag,
+			GameTagDef ____mutationTag)
+		{
+			int i;
+			bool flag;
+			bool flag1;
+			____currentCharacterAugmentsAmount = AugmentScreenUtilities.GetNumberOfAugments(__instance.CurrentCharacter);
+			bool flag2 = ____currentCharacterAugmentsAmount < MAX_AUGMENTATIONS;
+			foreach (KeyValuePair<AddonSlotDef, UIModuleMutationSection> _augmentSection in ____augmentSections)
+			{
+				AugumentSlotState augumentSlotState = AugumentSlotState.Available;
+				string localizationKey = null;
+				ItemDef augmentAtSlot = AugmentScreenUtilities.GetAugmentAtSlot(__instance.CurrentCharacter, _augmentSection.Key);
+				if (augmentAtSlot != null)
+				{
+					flag = augmentAtSlot.Tags.Contains(____bionicsTag);
+				}
+				else
+				{
+					flag = false;
+				}
+				bool flag3 = flag;
+				if (augmentAtSlot != null)
+				{
+					flag1 = augmentAtSlot.Tags.Contains(____mutationTag);
+				}
+				else
+				{
+					flag1 = false;
+				}
+				if (flag1)
+				{
+					localizationKey = __instance.LockedDueToMutationKey.LocalizationKey;
+					augumentSlotState = AugumentSlotState.BlockedByPermenantAugument;
+				}
+				else if (!flag2 && !flag3)
+				{
+					localizationKey = __instance.LockedDueToLimitKey.LocalizationKey;
+					augumentSlotState = AugumentSlotState.AugumentationLimitReached;
+				}
+				_augmentSection.Value.ResetContainer(augumentSlotState, localizationKey);
+			}
+			foreach (GeoItem armourItem in __instance.CurrentCharacter.ArmourItems)
+			{
+				if (!armourItem.ItemDef.Tags.Contains(____bionicsTag))
+				{
+					continue;
+				}
+				AddonDef.RequiredSlotBind[] requiredSlotBinds = armourItem.ItemDef.RequiredSlotBinds;
+				for (i = 0; i < (int)requiredSlotBinds.Length; i++)
+				{
+					AddonDef.RequiredSlotBind requiredSlotBind = requiredSlotBinds[i];
+					if (____augmentSections.ContainsKey(requiredSlotBind.RequiredSlot))
+					{
+						____augmentSections[requiredSlotBind.RequiredSlot].SetMutationUsed(armourItem.ItemDef);
+					}
+				}
+			}
+			__instance.AugmentsAvailableValue.text = __instance.XoutOfY.Localize(null)
+				.Replace("{0}", ____currentCharacterAugmentsAmount.ToString())
+				.Replace("{1}", MAX_AUGMENTATIONS.ToString()); ;
+			__instance.AugmentsAvailableValue.GetComponent<UIColorController>().SetWarningActive(flag2, false);
 			return false;
 		}
 
