@@ -17,6 +17,9 @@ namespace pantolomin.phoenixPoint.fullMutation
 {
     public class Mod: IPhoenixPointMod
     {
+		public Mod() {
+		}
+
         public ModLoadPriority Priority => ModLoadPriority.Low;
 
         public void Initialize()
@@ -34,51 +37,33 @@ namespace pantolomin.phoenixPoint.fullMutation
 
         private const int MAX_AUGMENTATIONS = 3;
 
-        public static bool Override_InitCharacterInfo_Mutate(UIModuleMutate __instance,
+		public static bool Override_InitCharacterInfo_Mutate(UIModuleMutate __instance,
             ref int ____currentCharacterAugmentsAmount,
 			Dictionary<AddonSlotDef, UIModuleMutationSection> ____augmentSections,
 			GameTagDef ____bionicsTag,
 			GameTagDef ____mutationTag)
         {
-			int i;
-			bool flag;
-			bool flag1;
+			____currentCharacterAugmentsAmount = 0;
 			____currentCharacterAugmentsAmount = AugmentScreenUtilities.GetNumberOfAugments(__instance.CurrentCharacter);
-			bool flag2 = ____currentCharacterAugmentsAmount < MAX_AUGMENTATIONS;
-			foreach (KeyValuePair<AddonSlotDef, UIModuleMutationSection> _augmentSection in ____augmentSections)
+			bool flag = ____currentCharacterAugmentsAmount < MAX_AUGMENTATIONS;
+			foreach (KeyValuePair<AddonSlotDef, UIModuleMutationSection> augmentSection in ____augmentSections)
 			{
-				AugumentSlotState augumentSlotState = AugumentSlotState.Available;
-				string localizationKey = null;
-				ItemDef augmentAtSlot = AugmentScreenUtilities.GetAugmentAtSlot(__instance.CurrentCharacter, _augmentSection.Key);
-				if (augmentAtSlot != null)
+				AugumentSlotState slotState = AugumentSlotState.Available;
+				string lockedReasonKey = null;
+				ItemDef augmentAtSlot = AugmentScreenUtilities.GetAugmentAtSlot(__instance.CurrentCharacter, augmentSection.Key);
+				bool flag2 = augmentAtSlot?.Tags.Contains(____bionicsTag) ?? false;
+				bool flag3 = augmentAtSlot?.Tags.Contains(____mutationTag) ?? false;
+				if (flag2)
 				{
-					flag = augmentAtSlot.Tags.Contains(____bionicsTag);
+					lockedReasonKey = __instance.LockedDueToBionicsKey.LocalizationKey;
+					slotState = AugumentSlotState.BlockedByPermenantAugument;
 				}
-				else
+				else if (!flag && !flag3)
 				{
-					flag = false;
+					lockedReasonKey = __instance.LockedDueToLimitKey.LocalizationKey;
+					slotState = AugumentSlotState.AugumentationLimitReached;
 				}
-				bool flag3 = flag;
-				if (augmentAtSlot != null)
-				{
-					flag1 = augmentAtSlot.Tags.Contains(____mutationTag);
-				}
-				else
-				{
-					flag1 = false;
-				}
-				bool flag4 = flag1;
-				if (flag3)
-				{
-					localizationKey = __instance.LockedDueToBionicsKey.LocalizationKey;
-					augumentSlotState = AugumentSlotState.BlockedByPermenantAugument;
-				}
-				else if (!flag2 && !flag4)
-				{
-					localizationKey = __instance.LockedDueToLimitKey.LocalizationKey;
-					augumentSlotState = AugumentSlotState.AugumentationLimitReached;
-				}
-				_augmentSection.Value.ResetContainer(augumentSlotState, localizationKey);
+				augmentSection.Value.ResetContainer(slotState, lockedReasonKey);
 			}
 			foreach (GeoItem armourItem in __instance.CurrentCharacter.ArmourItems)
 			{
@@ -87,7 +72,7 @@ namespace pantolomin.phoenixPoint.fullMutation
 					continue;
 				}
 				AddonDef.RequiredSlotBind[] requiredSlotBinds = armourItem.ItemDef.RequiredSlotBinds;
-				for (i = 0; i < (int)requiredSlotBinds.Length; i++)
+				for (int i = 0; i < requiredSlotBinds.Length; i++)
 				{
 					AddonDef.RequiredSlotBind requiredSlotBind = requiredSlotBinds[i];
 					if (____augmentSections.ContainsKey(requiredSlotBind.RequiredSlot))
@@ -96,10 +81,11 @@ namespace pantolomin.phoenixPoint.fullMutation
 					}
 				}
 			}
-			__instance.MutationsAvailableValue.text = __instance.XoutOfY.Localize(null)
-				.Replace("{0}", ____currentCharacterAugmentsAmount.ToString())
-				.Replace("{1}", MAX_AUGMENTATIONS.ToString());
-			__instance.MutationsAvailableValue.GetComponent<UIColorController>().SetWarningActive(MAX_AUGMENTATIONS <= ____currentCharacterAugmentsAmount, false);
+			string text = __instance.XoutOfY.Localize();
+			text = text.Replace("{0}", ____currentCharacterAugmentsAmount.ToString());
+			text = text.Replace("{1}", MAX_AUGMENTATIONS.ToString());
+			__instance.MutationsAvailableValue.text = text;
+			__instance.MutationsAvailableValue.GetComponent<UIColorController>().SetWarningActive(MAX_AUGMENTATIONS <= ____currentCharacterAugmentsAmount);
 			return false;
 		}
 
@@ -109,44 +95,26 @@ namespace pantolomin.phoenixPoint.fullMutation
 			GameTagDef ____bionicsTag,
 			GameTagDef ____mutationTag)
 		{
-			int i;
-			bool flag;
-			bool flag1;
+			____currentCharacterAugmentsAmount = 0;
 			____currentCharacterAugmentsAmount = AugmentScreenUtilities.GetNumberOfAugments(__instance.CurrentCharacter);
-			bool flag2 = ____currentCharacterAugmentsAmount < MAX_AUGMENTATIONS;
-			foreach (KeyValuePair<AddonSlotDef, UIModuleMutationSection> _augmentSection in ____augmentSections)
+			bool flag = ____currentCharacterAugmentsAmount < MAX_AUGMENTATIONS;
+			foreach (KeyValuePair<AddonSlotDef, UIModuleMutationSection> augmentSection in ____augmentSections)
 			{
-				AugumentSlotState augumentSlotState = AugumentSlotState.Available;
-				string localizationKey = null;
-				ItemDef augmentAtSlot = AugmentScreenUtilities.GetAugmentAtSlot(__instance.CurrentCharacter, _augmentSection.Key);
-				if (augmentAtSlot != null)
+				AugumentSlotState slotState = AugumentSlotState.Available;
+				string lockedReasonKey = null;
+				ItemDef augmentAtSlot = AugmentScreenUtilities.GetAugmentAtSlot(__instance.CurrentCharacter, augmentSection.Key);
+				bool flag2 = augmentAtSlot?.Tags.Contains(____bionicsTag) ?? false;
+				if (augmentAtSlot?.Tags.Contains(____mutationTag) ?? false)
 				{
-					flag = augmentAtSlot.Tags.Contains(____bionicsTag);
+					lockedReasonKey = __instance.LockedDueToMutationKey.LocalizationKey;
+					slotState = AugumentSlotState.BlockedByPermenantAugument;
 				}
-				else
+				else if (!flag && !flag2)
 				{
-					flag = false;
+					lockedReasonKey = __instance.LockedDueToLimitKey.LocalizationKey;
+					slotState = AugumentSlotState.AugumentationLimitReached;
 				}
-				bool flag3 = flag;
-				if (augmentAtSlot != null)
-				{
-					flag1 = augmentAtSlot.Tags.Contains(____mutationTag);
-				}
-				else
-				{
-					flag1 = false;
-				}
-				if (flag1)
-				{
-					localizationKey = __instance.LockedDueToMutationKey.LocalizationKey;
-					augumentSlotState = AugumentSlotState.BlockedByPermenantAugument;
-				}
-				else if (!flag2 && !flag3)
-				{
-					localizationKey = __instance.LockedDueToLimitKey.LocalizationKey;
-					augumentSlotState = AugumentSlotState.AugumentationLimitReached;
-				}
-				_augmentSection.Value.ResetContainer(augumentSlotState, localizationKey);
+				augmentSection.Value.ResetContainer(slotState, lockedReasonKey);
 			}
 			foreach (GeoItem armourItem in __instance.CurrentCharacter.ArmourItems)
 			{
@@ -155,7 +123,7 @@ namespace pantolomin.phoenixPoint.fullMutation
 					continue;
 				}
 				AddonDef.RequiredSlotBind[] requiredSlotBinds = armourItem.ItemDef.RequiredSlotBinds;
-				for (i = 0; i < (int)requiredSlotBinds.Length; i++)
+				for (int i = 0; i < requiredSlotBinds.Length; i++)
 				{
 					AddonDef.RequiredSlotBind requiredSlotBind = requiredSlotBinds[i];
 					if (____augmentSections.ContainsKey(requiredSlotBind.RequiredSlot))
@@ -164,10 +132,11 @@ namespace pantolomin.phoenixPoint.fullMutation
 					}
 				}
 			}
-			__instance.AugmentsAvailableValue.text = __instance.XoutOfY.Localize(null)
-				.Replace("{0}", ____currentCharacterAugmentsAmount.ToString())
-				.Replace("{1}", MAX_AUGMENTATIONS.ToString()); ;
-			__instance.AugmentsAvailableValue.GetComponent<UIColorController>().SetWarningActive(flag2, false);
+			string text = __instance.XoutOfY.Localize();
+			text = text.Replace("{0}", ____currentCharacterAugmentsAmount.ToString());
+			text = text.Replace("{1}", MAX_AUGMENTATIONS.ToString());
+			__instance.AugmentsAvailableValue.text = text;
+			__instance.AugmentsAvailableValue.GetComponent<UIColorController>().SetWarningActive(flag);
 			return false;
 		}
 
